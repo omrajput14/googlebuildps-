@@ -96,16 +96,30 @@ export async function geminiMiddleware(req, res) {
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify(body));
   };
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.end();
+  }
   if (req.method !== 'POST') return send(405, { error: 'POST only' });
   if (!process.env.GEMINI_API_KEY) return send(503, { error: 'GEMINI_API_KEY is not set on the server' });
   try {
-    let raw = '';
-    for await (const chunk of req) {
-      raw += chunk;
-      if (raw.length > 300_000) return send(413, { error: 'Request too large' });
+    let task, payload;
+    if (req.body && typeof req.body === 'object') {
+      ({ task, payload } = req.body);
+    } else if (typeof req.body === 'string' && req.body.length > 0) {
+      ({ task, payload } = JSON.parse(req.body));
+    } else {
+      let raw = '';
+      for await (const chunk of req) {
+        raw += chunk;
+        if (raw.length > 300_000) return send(413, { error: 'Request too large' });
+      }
+      ({ task, payload } = JSON.parse(raw || '{}'));
     }
-    const { task, payload } = JSON.parse(raw);
-    if (!Object.hasOwn(TASKS, task)) return send(400, { error: 'Unknown task' });
+    if (!task || !Object.hasOwn(TASKS, task)) return send(400, { error: 'Unknown task' });
     const r = await client().models.generateContent({ model: MODEL, ...TASKS[task](payload) });
     const content = r.candidates?.[0]?.content ?? null;
     const text = content?.parts?.filter((p) => p.text && !p.thought).map((p) => p.text).join('') ?? '';
