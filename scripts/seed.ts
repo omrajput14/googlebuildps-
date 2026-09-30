@@ -13,9 +13,10 @@ if (!projectId || !password || password.length < 8) {
   process.exit(1);
 }
 
-initializeApp({ projectId, credential: applicationDefault() });
-const db = getFirestore();
-const auth = getAuth();
+const app = initializeApp({ projectId, credential: applicationDefault() });
+const databaseId = process.env.FIRESTORE_DATABASE_ID;
+const db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
+const auth = getAuth(app);
 
 const phcs = generatePhcs();
 const batch = db.batch();

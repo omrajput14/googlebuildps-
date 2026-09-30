@@ -4,7 +4,14 @@ import { DEMO_USERS, generatePhcs, type PHC, type Role, type User } from './gene
 
 const env = import.meta.env;
 const fbConfig = env.VITE_FIREBASE_API_KEY
-  ? { apiKey: env.VITE_FIREBASE_API_KEY, authDomain: env.VITE_FIREBASE_AUTH_DOMAIN, projectId: env.VITE_FIREBASE_PROJECT_ID, appId: env.VITE_FIREBASE_APP_ID }
+  ? {
+      apiKey: env.VITE_FIREBASE_API_KEY,
+      authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: env.VITE_FIREBASE_PROJECT_ID,
+      appId: env.VITE_FIREBASE_APP_ID,
+      storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    }
   : null;
 export const backend: 'firebase' | 'local' = fbConfig ? 'firebase' : 'local';
 
@@ -12,7 +19,8 @@ let fbp: ReturnType<typeof loadFirebase> | undefined;
 async function loadFirebase() {
   const [{ initializeApp }, auth, fs] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/firestore')]);
   const app = initializeApp(fbConfig!);
-  return { auth, fs, a: auth.getAuth(app), db: fs.getFirestore(app) };
+  const db = env.VITE_FIRESTORE_DATABASE_ID ? fs.getFirestore(app, env.VITE_FIRESTORE_DATABASE_ID) : fs.getFirestore(app);
+  return { auth, fs, a: auth.getAuth(app), db };
 }
 const fb = () => (fbp ??= loadFirebase());
 
