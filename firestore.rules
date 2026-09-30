@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    // Facility data is written only by the seed script / state ETL (Admin SDK bypasses rules).
+    match /phcs/{id} { allow read: if request.auth != null; allow write: if false; }
+    match /updates/{id} {
+      allow create: if request.auth.token.role == 'pharmacist';
+      allow read: if request.auth.token.role in ['district', 'state', 'national'];
+    }
+    match /audit/{id} {
+      allow create: if request.auth.token.role in ['district', 'state'];
+      allow read: if request.auth != null;
+      allow update, delete: if false; // append-only trail
+    }
+  }
+}

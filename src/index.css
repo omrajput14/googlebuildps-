@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply bg-teal-600 text-white shadow-sm hover:bg-teal-700; }
+  .btn-secondary { @apply bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50; }
+  .btn-ai { @apply bg-violet-50 text-violet-800 ring-1 ring-violet-200 hover:bg-violet-100; }
+  .btn-danger { @apply bg-white text-red-700 ring-1 ring-red-300 hover:bg-red-50; }
+  .field { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-teal-500 focus:ring-2 focus:ring-teal-500/30 focus:outline-none; }
+  .label { @apply mb-1 block text-xs font-semibold tracking-wide text-slate-600 uppercase; }
+  .chip { @apply rounded-full px-3 py-1 text-sm font-medium ring-1 ring-slate-300 text-slate-600 hover:bg-slate-50; }
+  .chip-on { @apply bg-teal-600 text-white ring-teal-600 hover:bg-teal-700; }
+  .tbl { @apply w-full text-sm; }
+  .tbl th { @apply border-b border-slate-200 px-3 py-2 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-slate-500 uppercase; }
+  .tbl td { @apply border-b border-slate-100 px-3 py-2; }
+}
