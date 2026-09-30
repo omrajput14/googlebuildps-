@@ -2,9 +2,39 @@
 // and sends data. Used as Vite dev middleware and by the production Express server.
 import { GoogleGenAI, Type } from '@google/genai';
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+const clean = (s) => (s ? String(s).trim().replace(/^['"]+|['"]+$/g, '').replace(/^models\//, '') : '');
+
+const envModel = clean(process.env.GEMINI_MODEL);
+const envFallback = clean(process.env.GEMINI_FALLBACK_MODEL);
+
+const MODEL = envModel || 'gemini-3.5-flash';
+const FALLBACK = envFallback || 'gemini-3.5-flash-lite';
+
 let ai;
-const client = () => (ai ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }));
+const client = () => {
+  const key = clean(process.env.GEMINI_API_KEY);
+  return (ai ??= new GoogleGenAI({ apiKey: key }));
+};
+
+// On overload (503), rate limit (429) or format issues, try fallback model automatically.
+async function generate(req) {
+  const tries = [...new Set([MODEL, 'gemini-3.5-flash', FALLBACK, 'gemini-3.5-flash-lite'].filter(Boolean))];
+  let lastError;
+  for (let i = 0; i < tries.length; i++) {
+    const model = tries[i];
+    const config = { ...req.config, abortSignal: AbortSignal.timeout(i < tries.length - 1 ? 8000 : 25000) };
+    if (/gemini-3/.test(model)) config.thinkingConfig = { thinkingLevel: 'LOW' };
+    try {
+      return { r: await client().models.generateContent({ model, ...req, config }), model };
+    } catch (e) {
+      lastError = e;
+      if (i < tries.length - 1) {
+        await new Promise((ok) => setTimeout(ok, 300));
+      }
+    }
+  }
+  throw lastError;
+}
 
 const S = { type: Type.STRING };
 
@@ -120,10 +150,10 @@ export async function geminiMiddleware(req, res) {
       ({ task, payload } = JSON.parse(raw || '{}'));
     }
     if (!task || !Object.hasOwn(TASKS, task)) return send(400, { error: 'Unknown task' });
-    const r = await client().models.generateContent({ model: MODEL, ...TASKS[task](payload) });
+    const { r, model } = await generate(TASKS[task](payload));
     const content = r.candidates?.[0]?.content ?? null;
     const text = content?.parts?.filter((p) => p.text && !p.thought).map((p) => p.text).join('') ?? '';
-    send(200, { text, functionCalls: r.functionCalls ?? [], content, model: MODEL });
+    send(200, { text, functionCalls: r.functionCalls ?? [], content, model });
   } catch (e) {
     send(502, { error: String(e?.message ?? e) });
   }
